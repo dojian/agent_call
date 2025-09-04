@@ -39,6 +39,7 @@ dependencies = [
     "langgraph-checkpoint-postgres (>=2.0.16,<3.0.0)",
     "psycopg-binary (>=3.2.6,<4.0.0)",
     "langgraph-checkpoint-sqlite (>=2.0.6,<3.0.0)",
+    "itsdangerous (>=2.2.0,<3.0.0)",
 ]
 
 [build-system]
