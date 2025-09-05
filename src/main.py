@@ -1,7 +1,10 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, Header, status
+from pydantic import BaseModel, Field 
+from fastapi.responses import StreamingResponse
 from starlette.middleware.sessions import SessionMiddleware
 from src.tutor_controller import TutorController
 import uvicorn
+import json
 
 # Initialize the FastAPI application
 app = FastAPI(title="Personal Tutor API")
@@ -42,6 +45,16 @@ async def send_query(request: Request):
     tutor_controller.ensure_user_session(request.session)
     data = await request.json()
     return tutor_controller.send_query(data,request.session)
+
+# SSE streaming endpoint
+@app.post("/api/send_query/stream")
+async def send_query_stream(request: Request):
+    tutor_controller.ensure_user_session(request.session)
+    data = await request.json()
+    async def gen():
+        async for chunk in tutor_controller.send_query_stream(data, request.session):
+            yield f"data: {json.dumps(chunk)}\n\n"
+    return StreamingResponse(gen(), media_type="text/event-stream")
 
 # Run the server
 if __name__ == "__main__":

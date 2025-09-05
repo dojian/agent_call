@@ -63,3 +63,40 @@ class TutorService:
         except Exception as e:
             # TODO: Handle exceptions and raise a RuntimeError with an appropriate message
             raise RuntimeError(f"AI's response failed：{str(e)}")
+        
+    async def stream_response(self, student_id: str, session_id: str, query: str):
+        """Stream AI response for a student query."""
+        session = self.session_manager.get_session(student_id, session_id)
+        if not session:
+            raise ValueError("Session not found")
+
+        # Add student query
+        self.session_manager.add_message(student_id, session_id, "user", query)
+
+        try:
+            # Retrieve the conversation using the SessionManager
+            history = self.session_manager.get_conversation(student_id, session_id)
+            # Use the DeepSeek client to generate a streaming response based on the conversation
+            stream = self.client.chat.completions.create(
+                model = "deepseek-chat",
+                messages = history,
+                temperature = 0.7,
+                max_tokens = 500,
+                stream = True
+            )
+
+            # Stream the response events
+            tokens = []
+            for event in stream:
+                delta = event.choices[0].delta
+                if not delta and not delta.content:
+                    continue
+                tokens.append(delta.content)
+                yield {"session_id": session_id, "chunk": delta.content}
+            full_text = "".join(tokens)
+            self.session_manager.add_message(student_id, session_id, "assistant", full_text)
+            yield {"session_id": session_id, "text": full_text}
+
+        except Exception as e:
+            # Handle exceptions and raise a RuntimeError with an appropriate message
+            raise RuntimeError(f"Streaming AI response failed: {str(e)}")
